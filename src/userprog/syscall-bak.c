@@ -32,11 +32,10 @@ void exit (int status);
 
 void check_valid_ptr (const void *pointer)
 {
-    if (!is_user_vaddr(pointer))
+    if (pointer == NULL || !is_user_vaddr(pointer))
     {
         exit(-1);
     }
-
     void *check = pagedir_get_page(thread_current()->pagedir, pointer);
     if (check == NULL)
     {

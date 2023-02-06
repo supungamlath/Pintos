@@ -28,18 +28,17 @@ unsigned tell (int fd);
 void close (int fd);
 tid_t exec (const char *cmdline);
 void exit (int status);
-void get_args_3(struct intr_frame *f, int choose, void *args);
-void get_args_2(struct intr_frame *f, int choose, void *args);
-void get_args_1(struct intr_frame *f, int choose, void *args);
+void handle_syscall_3(struct intr_frame *f, int choose, void *args);
+void handle_syscall_2(struct intr_frame *f, int choose, void *args);
+void handle_syscall_1(struct intr_frame *f, int choose, void *args);
 
 
 void check_valid_ptr (const void *pointer)
 {
-    if (!is_user_vaddr(pointer))
+    if (pointer == NULL || !is_user_vaddr(pointer))
     {
         exit(-1);
     }
-
     void *check = pagedir_get_page(thread_current()->pagedir, pointer);
     if (check == NULL)
     {
@@ -54,7 +53,7 @@ syscall_init (void)
     lock_init(&file_lock);
 }
 
-void get_args_1(struct intr_frame *f, int choose, void *args)
+void handle_syscall_1(struct intr_frame *f, int choose, void *args)
 {
     int argv = *((int*) args);
     args += 4;
@@ -96,7 +95,7 @@ void get_args_1(struct intr_frame *f, int choose, void *args)
     }
 }
 
-void get_args_2(struct intr_frame *f, int choose, void *args)
+void handle_syscall_2(struct intr_frame *f, int choose, void *args)
 {
     int argv = *((int*) args);
     args += 4;
@@ -115,7 +114,7 @@ void get_args_2(struct intr_frame *f, int choose, void *args)
 }
 
 
-void get_args_3 (struct intr_frame *f, int choose, void *args)
+void handle_syscall_3 (struct intr_frame *f, int choose, void *args)
 {
     int argv = *((int*) args);
     args += 4;
@@ -137,56 +136,67 @@ void get_args_3 (struct intr_frame *f, int choose, void *args)
 static void
 syscall_handler (struct intr_frame *f )
 {
-    int syscall_number = 0;
+    int syscall_type = 0;
     check_valid_ptr((const void*) f -> esp);
     void *args = f -> esp;
-    syscall_number = *( (int *) f -> esp);
+    syscall_type = *( (int *) f -> esp);
     args+=4;
     check_valid_ptr((const void*) args);
-    switch(syscall_number)
-    {
-    case SYS_HALT:                  	/* Halt the operating system. */
+
+    if (syscall_type == SYS_HALT) {                  	
+        /* Halt the operating system. */
         halt();
-        break;
-    case SYS_EXIT:                   /* Terminate this process. */
-        get_args_1(f, SYS_EXIT,args);
-        break;
-    case SYS_EXEC:                   /* Start another process. */
-        get_args_1(f, SYS_EXEC,args);
-        break;
-    case SYS_WAIT:                   /* Wait for a child process to die. */
-        get_args_1(f, SYS_WAIT,args);
-        break;
-    case SYS_CREATE:                 /* Create a file. */
-        get_args_2(f, SYS_CREATE,args);
-        break;
-    case SYS_REMOVE:                 /* Delete a file. */
-        get_args_1(f, SYS_REMOVE,args);
-        break;
-    case SYS_OPEN:                   /* Open a file. */
-        get_args_1(f, SYS_OPEN,args);
-        break;
-    case SYS_FILESIZE:               /* Obtain a file's size. */
-        get_args_1(f, SYS_FILESIZE,args);
-        break;
-    case SYS_READ:                   /* Read from a file. */
-        get_args_3(f, SYS_READ,args);
-        break;
-    case SYS_WRITE:                  /* Write to a file. */
-        get_args_3(f, SYS_WRITE,args);
-        break;
-    case SYS_SEEK:                   /* Change position in a file. */
-        get_args_2(f, SYS_SEEK,args);
-        break;
-    case SYS_TELL:                   /* Report current position in a file. */
-        get_args_1(f, SYS_TELL,args);
-        break;
-    case SYS_CLOSE:                  /* Close a file. */
-        get_args_1(f, SYS_CLOSE,args);
-        break;
-    default:
+    }
+    else if (syscall_type == SYS_EXIT) {                   
+        /* Terminate this process. */
+        handle_syscall_1(f, SYS_EXIT,args);
+    }
+    else if (syscall_type == SYS_EXEC){                   
+        /* Start another process. */
+        handle_syscall_1(f, SYS_EXEC,args);
+    }
+    else if (syscall_type == SYS_WAIT){                   
+        /* Wait for a child process to die. */
+        handle_syscall_1(f, SYS_WAIT,args);
+    }
+    else if (syscall_type == SYS_CREATE){                 
+        /* Create a file. */
+        handle_syscall_2(f, SYS_CREATE,args);
+    }
+    else if (syscall_type == SYS_REMOVE){                 
+        /* Delete a file. */
+        handle_syscall_1(f, SYS_REMOVE,args);
+    }
+    else if (syscall_type == SYS_OPEN){                   
+        /* Open a file. */
+        handle_syscall_1(f, SYS_OPEN,args);
+    }
+    else if (syscall_type == SYS_FILESIZE){               
+        /* Obtain a file's size. */
+        handle_syscall_1(f, SYS_FILESIZE,args);
+    }
+    else if (syscall_type == SYS_READ){                   
+        /* Read from a file. */
+        handle_syscall_3(f, SYS_READ,args);
+    }
+    else if (syscall_type == SYS_WRITE){                  
+        /* Write to a file. */
+        handle_syscall_3(f, SYS_WRITE,args);   
+    }
+    else if (syscall_type == SYS_SEEK){
+        /* Change position in a file. */
+        handle_syscall_2(f, SYS_SEEK,args);
+    }
+    else if (syscall_type == SYS_TELL){                   
+        /* Report current position in a file. */
+        handle_syscall_1(f, SYS_TELL,args);
+    }
+    else if (syscall_type == SYS_CLOSE){                  
+        /* Close a file. */
+        handle_syscall_1(f, SYS_CLOSE,args);
+    }
+    else {
         exit(-1);
-        break;
     }
 }
 
