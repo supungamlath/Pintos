@@ -201,11 +201,11 @@ void exit (int status)
     struct thread *cur = thread_current();
     printf ("%s: exit(%d)\n", cur -> name, status);
 
-    //get me as a child
+    // Get the child element corresponding to the current thread
     struct child_element *child = get_child(cur->tid, &cur -> parent -> child_list);
-    //setting my exit status
+    // Set the exit status of the child
     child -> exit_status = status;
-    // mark my current status
+    // Mark the current status of the child
     if (status == -1)
     {
         child -> cur_status = WAS_KILLED;
@@ -214,28 +214,31 @@ void exit (int status)
     {
         child -> cur_status = HAD_EXITED;
     }
-
+    // Exit the current thread
     thread_exit();
 }
 
 tid_t
 exec (const char *cmd_line)
 {
-    struct thread* parent = thread_current();
+    // Get the current running thread
+    struct thread *parent = thread_current();
     tid_t pid = -1;
-    // create child process to execute cmd
+
+    // Create child process to execute the command line
     pid = process_execute(cmd_line);
 
-    // get the created child
-    struct child_element *child = get_child(pid,&parent -> child_list);
-    // wait this child until load
-    sema_down(&child-> real_child -> sema_exec);
-    // after wake up check if child load successfully
-    if(!child -> loaded_success)
-    {
-        //failed to load
+    // Get the created child process
+    struct child_element *child = get_child(pid, &parent->child_list);
+    // Wait for this child process to finish loading
+    sema_down(&child->real_child->sema_exec);
+    // After waking up, check if the child process was loaded successfully
+    if (!child->loaded_success) {
+        // Failed to load
         return -1;
     }
+
+    // Return the process ID of the child process
     return pid;
 }
 
@@ -271,11 +274,11 @@ int open (const char *file)
     {
         cur->fd_size = cur->fd_size + 1;
         ret = cur->fd_size;
-        /*create and init new fd_element*/
+        /* Create and init new fd_element */
         struct fd_element *file_d = (struct fd_element*) malloc(sizeof(struct fd_element));
         file_d->fd = ret;
         file_d->myfile = opened_file;
-        // add this fd_element to this thread fd_list
+        /* Add this fd_element to this thread fd_list */
         list_push_back(&cur->fd_list, &file_d->element);
     }
     return ret;
@@ -295,26 +298,25 @@ int read (int fd, void *buffer, unsigned size)
     int ret = -1;
     if(fd == 0)
     {
-        // read from the keyboard
+        // Read from keyboard
         ret = input_getc();
     }
     else if(fd > 0)
     {
-        //read from file
-        //get the fd_element
+        // Read from file
+        // Get the fd_element
         struct fd_element *fd_elem = get_fd(fd);
         if(fd_elem == NULL || buffer == NULL)
         {
             return -1;
         }
-        //get the file
+        // Get the file
         struct file *myfile = fd_elem->myfile;
         lock_acquire(&file_lock);
         ret = file_read(myfile, buffer, size);
         lock_release(&file_lock);
         if(ret < (int)size && ret != 0)
         {
-            //some error happened
             ret = -1;
         }
     }
@@ -327,20 +329,19 @@ int write (int fd, const void *buffer_, unsigned size)
     int ret = -1;
     if (fd == 1)
     {
-        // write in the consol
         putbuf( (char *)buffer, size);
         return (int)size;
     }
     else
     {
-        //write in file
-        //get the fd_element
+        // Write in file
+        // Get the fd_element
         struct fd_element *fd_elem = get_fd(fd);
         if(fd_elem == NULL || buffer_ == NULL )
         {
             return -1;
         }
-        //get the file
+        // Get the file
         struct file *myfile = fd_elem->myfile;
         lock_acquire(&file_lock);
         ret = file_write(myfile, buffer_, size);
@@ -391,7 +392,7 @@ void close (int fd)
 }
 
 /**
-close and free all file the current thread have
+ Close and free all files of the current thread
 */
 void close_all(struct list *fd_list)
 {
@@ -407,9 +408,9 @@ void close_all(struct list *fd_list)
 }
 
 /**
- * iterate on the fd_list of the cuttrnt thread and get the file which
- * have the same fd
- * if nou found retuen NULL
+ * Iterate on the fd_list of the current thread and get the file which
+ * has the same fd
+ * If not found return NULL
  * */
 struct fd_element*
 get_fd(int fd)
@@ -429,7 +430,7 @@ get_fd(int fd)
 
 
 /**
-intrate on mylist and return the child which have the tid
+Iterate mylist and return the child with the tid
 */
 struct child_element*
 get_child(tid_t tid, struct list *mylist)

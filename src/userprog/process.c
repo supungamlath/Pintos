@@ -412,7 +412,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
         goto done;
   }
     get_stack_args (fn_copy, esp, &save_ptr);
-    //palloc_free_page (fn_copy);
     free(fn_copy);
 
     /* Start address. */
@@ -436,17 +435,10 @@ done:
 static
 void get_stack_args(char *file_name, void **esp, char **save_ptr)
 {
-
     char *token = file_name;
     void *stack_pointer = *esp;
     int argc = 0;
     int total_length = 0;
-    /*split and insert in the stack
-     * /bin/ls -l foo bar
-     * /bin/ls
-     * -l
-     * foo
-     * bar*/
     while (token != NULL)
     {
         int arg_length = (strlen(token) + 1);
@@ -458,25 +450,21 @@ void get_stack_args(char *file_name, void **esp, char **save_ptr)
     }
 
     char *args_pointer = (char *) stack_pointer;
-
-    /*adding word align*/
     int  word_align = 0;
     while (total_length % 4 != 0)
     {
         word_align++;
         total_length++;
     }
+
     if (word_align != 0)
     {
         stack_pointer -= word_align;
         memset(stack_pointer, 0, word_align);
     }
 
-    /*adding null char*/
     stack_pointer -= sizeof(char *);
     memset(stack_pointer, 0, 1);
-
-    /*adding argument address*/
     int args_pushed = 0;
     while(argc > args_pushed)
     {
@@ -486,16 +474,11 @@ void get_stack_args(char *file_name, void **esp, char **save_ptr)
         args_pointer += (strlen(args_pointer) + 1);
     }
 
-    /*adding char** */
     char ** first_fetch = (char **) stack_pointer;
     stack_pointer -= sizeof(char **);
     *((char ***) stack_pointer) = first_fetch;
-
-    /*adding number of arrguments*/
     stack_pointer -= sizeof(int);
     *(int *) (stack_pointer) = argc;
-
-    /*adding return address*/
     stack_pointer -= sizeof(int*);
     *(int *) (stack_pointer) = 0;
     *esp = stack_pointer;
