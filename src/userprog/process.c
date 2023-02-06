@@ -77,18 +77,18 @@ start_process (void *file_name_)
     if_.eflags = FLAG_IF | FLAG_MBS;
     success = load (file_name, &if_.eip, &if_.esp);
 
-    // if this thread have a parent
+    // If this thread has a parent
     if(thread_current()->parent != NULL)
     {
-        // get this thread as a child
+        // Get this thread as a child
         struct child_element *child = get_child(thread_current() -> tid, &thread_current()->parent->child_list);
-        // setting the load status
+        // Setting the load status
         child ->loaded_success = success;
     }
-    // wake up my parent which wait me to load successfully
+    // Wake up the parent which awaited this thread to load successfully
     sema_up(&thread_current() -> sema_exec);
 
-    //free file name
+    // Free file name
     palloc_free_page(file_name);
     if (!success)
     {
@@ -142,39 +142,40 @@ process_exit (void)
     struct thread *cur = thread_current();
     uint32_t *pd;
 
-    // if this thread have a parent
-    if(thread_current()->parent != NULL)
+  // If this thread has a parent
+  if (cur->parent != NULL)
     {
-        // get this thread as a child
-        struct child_element *child = get_child(thread_current() -> tid, &thread_current()->parent->child_list);
-        // if this thread is still alive
-        if(child -> cur_status == STILL_ALIVE)
+      // Get this thread as a child
+      struct child_element *child = get_child(cur->tid, &cur->parent->child_list);
+
+      // If this thread is still alive
+      if (child->cur_status == STILL_ALIVE)
         {
-            // this thread had been killed
-            child -> cur_status = WAS_KILLED;
-            child -> exit_status = -1;
+          // Mark this thread as killed
+          child->cur_status = WAS_KILLED;
+          child->exit_status = -1;
         }
     }
 
-    // wake up my parent which wait my lock
-    sema_up(&thread_current()->sema_wait);
+  // Wake up the parent that is waiting for this thread's lock
+  sema_up(&cur->sema_wait);
 
-    //Free my Children
-    free_children(&thread_current()->child_list);
+  // Free this thread's children
+  free_children(&cur->child_list);
 
-    // lose my parent
+  // Detach this thread from its parent
     thread_current()->parent = NULL;
 
-    // allow other threads to use my executable file
-    if (cur -> exec_file != NULL)
+  // Allow other threads to use this thread's executable file
+  if (cur->exec_file != NULL)
     {
-        file_allow_write(cur -> exec_file);
+      file_allow_write(cur->exec_file);
     }
 
-    // close my executable file
+  // Close this thread's executable file
     file_close(cur->exec_file);
 
-    //close all file the current thread have
+  // Close all files opened by this thread
     close_all(&cur->fd_list);
 
     /* Destroy the current process's page directory and switch back
@@ -196,7 +197,7 @@ process_exit (void)
 }
 
 /**
-free all the children in the child_list
+Free all the children in the child_list
 */
 void
 free_children(struct list *child_list)
@@ -227,7 +228,7 @@ process_activate (void)
        interrupts. */
     tss_update ();
 }
-
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -304,14 +305,13 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *file_name, void (**eip) (void), void **esp)
 {
-// printf ("hello from load\n");
     struct thread *t = thread_current ();
     struct Elf32_Ehdr ehdr;
     struct file *file = NULL;
     off_t file_ofs;
     bool success = false;
     int i;
-    /*stack arguments*/
+  /* Stack arguments */
     char *fn_copy;
     char *save_ptr;
 
@@ -408,8 +408,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
     /* Set up stack. */
-    if (!setup_stack (esp))
+  if (!setup_stack (esp)) {
         goto done;
+  }
     get_stack_args (fn_copy, esp, &save_ptr);
     //palloc_free_page (fn_copy);
     free(fn_copy);
@@ -420,7 +421,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     success = true;
 
 done:
-    /* We arrive here whether the load is successful or not. */
+  /* Reach here regardless of the load success */
     if (success)
     {
         /*deny*/
@@ -430,7 +431,8 @@ done:
     else file_close (file);
     return success;
 }
-/*get stack arguments*/
+
+/* Function to get stack arguments */
 static
 void get_stack_args(char *file_name, void **esp, char **save_ptr)
 {
@@ -498,8 +500,6 @@ void get_stack_args(char *file_name, void **esp, char **save_ptr)
     *(int *) (stack_pointer) = 0;
     *esp = stack_pointer;
 }
-
-/* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);
 
