@@ -1,2 +1,2 @@
-# CSCC69-Pintos
+# CS2043 - Operating Systems
 
